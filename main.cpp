@@ -18,7 +18,10 @@ int main() {
 	}
 	//cont.pushAfterIndex(101, 19);
 	//cont.pushAfterIndex(102, 19);
-	cont.pushAfterIndex(999, 24);
+	cont.pushAfterIndex(999, 22);
+
+	cont.pushAfterIndex(888, 27);
+	cont.pushAfterIndex(887, 27);
 
 	cont.LoadOut();
 

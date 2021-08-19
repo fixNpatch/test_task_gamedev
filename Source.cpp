@@ -85,7 +85,9 @@ void Container::LoadOut()
 	while (true) {
 		currentCell = currentCluster->cl_head;
 		for (auto i = 0; i < currentCluster->size; i++) {
-			std::cout << currentCell << "||    " << currentCell->m_prev << "\t||    " << currentCell->m_next << "\t||\t" << currentCell->m_SomeData << "\t||     " << currentCluster << " " << currentCluster->cl_next << "\n";
+			std::cout << currentCell << "||    " << currentCell->m_prev << "\t||    " << currentCell->m_next << "\t||\t" 
+				<< currentCell->m_SomeData << "\t||     " << currentCluster << " " << currentCluster->cl_next 
+				<< " clusterSize:" << currentCluster->size << "\n";
 			if (currentCell->m_next == nullptr) break;
 			currentCell = currentCell->m_next;
 		}
@@ -110,7 +112,7 @@ CellClusterRef Container::GetNthCell(int index)
 	int counter = 0;
 	Cluster* currentCluster = head;
 	while (counter + currentCluster->size < index) {
-		counter += head->size;
+		counter += currentCluster->size;
 		if (currentCluster->cl_next == nullptr) break;
 		currentCluster = currentCluster->cl_next;
 	}
@@ -148,38 +150,84 @@ void Container::pushAfterPointer(int data, Cell* cellptr, Cluster* clusterptr)
 		cellptr->m_next = NewCell;
 		clusterptr->size++;
 	}
-	else { // если не позволяет размер рассматриваемого
-		// смотрим размер следующего кластера
-		if (clusterptr->cl_next != nullptr && clusterptr->cl_next->size + 1 <= MAX_CLUSTER_SIZE) { // 1. либо пишем в него
-			NewCell->m_prev = cellptr;
-			NewCell->m_next = cellptr->m_next;
-			cellptr->m_next = NewCell;
-			cellptr->m_next->m_prev = NewCell;
-			clusterptr->cl_next->cl_head = NewCell;
-			clusterptr->cl_next->size++;
-		}
-		else { // 2. либо создаем еще один кластер между рассмотренными двумя
-			Cluster* NewCluster = new Cluster(nullptr, nullptr, NewCell);
-			NumberOfClusters++;
-			
-			NewCluster->cl_prev = clusterptr;
-			NewCluster->cl_next = clusterptr->cl_next;
-			clusterptr->cl_next = NewCluster;
-			clusterptr->cl_next->cl_prev = NewCluster;
 
-			NewCell->m_prev = cellptr;
+	else { // если не позволяет размер рассматриваемого
+		// ---------------------------------------------
+		// 1. пытались добавить в центр рассматриваемого
+		// => разбиваем на два кластера
+		// ---------------------------------------------
+		// 2. пытались добавить в край рассматриваемого
+		// => смотрим на смежный кластер
+		// => => либо добавляем в него
+		// => => либо добавляем новый кластер
+		// ---------------------------------------------
+
+		if(cellptr != clusterptr->cl_tail) { // попали не в край
+			Cluster* NewCluster = new Cluster(clusterptr, clusterptr->cl_next, NewCell);
+			NumberOfClusters++;
+			NewCluster->cl_tail = clusterptr->cl_tail;
+
 			NewCell->m_next = cellptr->m_next;
-			cellptr->m_next = NewCell;
+			NewCell->m_prev = cellptr;
+
 			cellptr->m_next->m_prev = NewCell;
+			cellptr->m_next = NewCell;
+
+			clusterptr->cl_tail = cellptr;
+
+			int counter = 0;
+			Cell* ptr = clusterptr->cl_head;
+			while (ptr != cellptr) {
+				counter++;
+				ptr = ptr->m_next;
+			}
+
+			clusterptr->size = counter;
+
+
+			counter = 0;
+			ptr = NewCluster->cl_head;
+			while (ptr != NewCluster->cl_tail) {
+				counter++;
+				ptr = ptr->m_next;
+			}
+			
+			NewCluster->size = counter;
+
+		}
+		else { // попали в край
+			// смотрим размер следующего кластера
+			if (clusterptr->cl_next != nullptr && clusterptr->cl_next->size + 1 < MAX_CLUSTER_SIZE) { // 1. либо пишем в него
+				NewCell->m_prev = cellptr;
+				NewCell->m_next = cellptr->m_next;
+				cellptr->m_next = NewCell;
+				cellptr->m_next->m_prev = NewCell;
+				clusterptr->cl_next->cl_head = NewCell;
+				clusterptr->cl_next->size++;
+			}
+			else { // 2. либо создаем еще один кластер между рассмотренными двумя
+				Cluster* NewCluster = new Cluster(nullptr, nullptr, NewCell);
+				NumberOfClusters++;
+
+				NewCluster->cl_prev = clusterptr;
+				NewCluster->cl_next = clusterptr->cl_next;
+				clusterptr->cl_next = NewCluster;
+				clusterptr->cl_next->cl_prev = NewCluster;
+
+				NewCell->m_prev = cellptr;
+				NewCell->m_next = cellptr->m_next;
+				cellptr->m_next = NewCell;
+				cellptr->m_next->m_prev = NewCell;
+			}
 		}
 	}
-
 }
 
 
 void Container::pushAfterIndex(int data, int index)
 {
 	CellClusterRef CellInfo = this->GetNthCell(index);
+	std::cout << "Try to get " << index << " index => " << CellInfo.cell << " : " << CellInfo.cluster << std::endl;
 	pushAfterPointer(data, CellInfo.cell, CellInfo.cluster);
 }
 
